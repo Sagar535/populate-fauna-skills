@@ -1,0 +1,15 @@
+{
+  "name": "populate-skills",
+  "version": "1.0.0",
+  "description": "'CRUD mainly to populate skill quizes in faunadb'",
+  "main": "index.js",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "express": "^4.17.2",
+    "faunadb": "^4.4.1"
+  },
+  "scripts": {
+    "dev": "node index.js"
+  }
+}
