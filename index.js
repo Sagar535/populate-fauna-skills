@@ -8,6 +8,10 @@ const client = new faunadb.Client({
 
 const fetch = require('node-fetch')
 
+const { sanitized } = require('./lib/utils')
+
+const resource_url = 'https://skill-assess-api.vercel.app/api/questions/'
+
 const app = express()
 app.use(express.json())
 const PORT = process.env.PORt || 8000
@@ -56,12 +60,12 @@ app.get('/questions/:id', async (req, res) => {
 // create question
 app.post('/questions', async (req, res) => {
 	try {
-		const {question} = req.body
+		const {question, topic} = req.body
 		console.log(req.body)
 		console.log(question)
 		const {data} = await client.query(
-			q.Create(q.Collection('questions'), {
-				data: {question}
+			q.Create(q.Collection('Question'), {
+				data: {question, topic}
 			})
 		)
 
@@ -71,10 +75,37 @@ app.post('/questions', async (req, res) => {
 	}
 })
 
+// get list of all skills
+app.get('/skills', async (req, res) => {
+	const response = await fetch(resource_url + 'skills')
+	const skills = await response.json()
 
-app.get('/populate', async (req, res) => {
+	
+
+	res.status(201).json(skills.map(skill => {
+		return { skill_name: sanitized(skill.skill_name) }
+	}))
+})
+
+// feature to delete questions one skill at a time
+app.post('/delete', async (req, res) => {
+	const { skill } = req.body
+
+	if(skill === undefined) { return res.status(422).json({message: 'Please provide skill name.'}) }
+
+	const questions = q.Map(
+		q.Match(Index('question_by_topic'), skill)
+	)
+})
+
+
+app.post('/populate', async (req, res) => {
+	// get topic of resource to populate
+	console.log(req.body)
+	const { topic } = req.body
+
 	// fetch questions from skills asess api
-	const response = await fetch('https://skill-assess-api.vercel.app/api/questions/rubi-on-rails')
+	const response = await fetch(resource_url + topic)
 	const questions = await response.json()
 
 
@@ -92,7 +123,7 @@ app.get('/populate', async (req, res) => {
 		questions.forEach(async (question) => {
 			const createdQuestion = await client.query(
 				q.Create(q.Collection('Question'), {
-					data: {question: question.question}
+					data: {question: question.question, topic: topic}
 				})
 			)
 
