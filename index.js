@@ -1,4 +1,3 @@
-const e = require('express')
 const express = require('express')
 const faunadb = require('faunadb'),
 	q = faunadb.query
