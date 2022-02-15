@@ -2,11 +2,17 @@ const express = require('express')
 const faunadb = require('faunadb'),
 	q = faunadb.query
 
+require('dotenv').config()
+
 const client = new faunadb.Client({
-	secret: 'fnAEcRVGlrACScAzR_KZBnX-5ntIR6EGcES2dVnT'
+	secret: process.env.FAUNA_SECRET
 })
 
 const fetch = require('node-fetch')
+
+const { sanitized } = require('./lib/utils')
+
+const resource_url = 'https://skill-assess-api.vercel.app/api/questions/'
 
 const app = express()
 app.use(express.json())
@@ -28,7 +34,7 @@ app.get('/questions', async(req, res) => {
 	try {
 		let questions = await(client.query(
 			q.Map(
-				q.Paginate(q.Documents(q.Collection('questions'))),
+				q.Paginate(q.Documents(q.Collection('Question'))),
 				q.Lambda('X', q.Get(q.Var('X')))
 			)
 		))
@@ -56,12 +62,12 @@ app.get('/questions/:id', async (req, res) => {
 // create question
 app.post('/questions', async (req, res) => {
 	try {
-		const {question} = req.body
+		const {question, topic} = req.body
 		console.log(req.body)
 		console.log(question)
 		const {data} = await client.query(
-			q.Create(q.Collection('questions'), {
-				data: {question}
+			q.Create(q.Collection('Question'), {
+				data: {question, topic}
 			})
 		)
 
@@ -71,28 +77,65 @@ app.post('/questions', async (req, res) => {
 	}
 })
 
+// get list of all skills
+app.get('/skills', async (req, res) => {
+	const response = await fetch(resource_url + 'skills')
+	const skills = await response.json()
 
-app.get('/populate', async (req, res) => {
+	
+
+	res.status(201).json(skills.map(skill => {
+		return { skill_name: sanitized(skill.skill_name) }
+	}))
+})
+
+// feature to delete questions one skill at a time
+// need it to easily populate and delete questions when necessary
+// delete all questions of particular topic
+app.post('/delete', async (req, res) => {
+	const { skill } = req.body
+
+	if(skill === undefined) { return res.status(422).json({message: 'Please provide skill name.'}) }
+
+	// question_refs
+	const { data } = await client.query(q.Paginate(q.Match(q.Index('question_by_topic'), skill)))
+	const question_refs = data
+
+	try {
+		const deleted_question_refs = await client.query(q.Map(
+			question_refs,
+			q.Lambda('question_ref', q.Delete(q.Var('question_ref')))
+		))
+	
+		res.status(202).json({
+			message: 'Successfully deleted questions',
+			deleted_question_refs: deleted_question_refs
+		})
+	} catch(error) {
+		console.log(error)
+
+		res.status(500).json({
+			message: error.message
+		})
+	}
+	
+})
+
+
+app.post('/populate', async (req, res) => {
+	// get topic of resource to populate
+	console.log(req.body)
+	const { topic } = req.body
+
 	// fetch questions from skills asess api
-	const response = await fetch('https://skill-assess-api.vercel.app/api/questions/rubi-on-rails')
+	const response = await fetch(resource_url + topic)
 	const questions = await response.json()
-
-
-	// console.log(questions)
-
-	// const createdQuestion = await client.query(
-	// 	q.Create(q.Collection('Question'), {
-	// 		data: {question: questions[0].question}
-	// 	})
-	// )
-
-	// console.log(createdQuestion.ref.id)
 
 	try {
 		questions.forEach(async (question) => {
 			const createdQuestion = await client.query(
 				q.Create(q.Collection('Question'), {
-					data: {question: question.question}
+					data: {question: question.question, topic: topic}
 				})
 			)
 
@@ -110,12 +153,6 @@ app.get('/populate', async (req, res) => {
 		res.status(500).json({error: error.description})
 	}
 })
-
-// need it to easily populate and delete questions when necessary
-// delete all questions of particular topic
-
-
-
 
 app.listen(PORT, () => console.log(`Listening at port ${PORT}`))
 
