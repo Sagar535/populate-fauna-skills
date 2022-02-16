@@ -97,19 +97,30 @@ app.post('/delete', async (req, res) => {
 
 	if(topic === undefined) { return res.status(422).json({message: 'Please provide skill topic.'}) }
 
-	// question_refs
-	const { data } = await client.query(q.Paginate(q.Match(q.Index('question_by_topic'), topic)))
-	const question_refs = data
-
 	try {
-		const deleted_question_refs = await client.query(q.Map(
-			question_refs,
-			q.Lambda('question_ref', q.Delete(q.Var('question_ref')))
-		))
-	
-		res.status(202).json({
-			message: 'Successfully deleted questions',
-			deleted_question_refs: deleted_question_refs
+		// single query to delete all questions and answers
+		const { data } = await client.query(
+			q.Map(
+				q.Paginate(q.Match(q.Index('question_by_topic'), topic), { size: 10000 }),
+				q.Lambda('question_ref', 
+					q.Let(
+						{
+							answer_refs: q.Paginate(
+								q.Match(q.Index("answer_by_owner"),q.Var('question_ref'))
+							)
+						},
+						{
+							deleted_question: q.Delete(q.Var('question_ref')),
+							deleted_answers: q.Map(q.Var('answer_refs'), q.Lambda('answer_ref', q.Delete(q.Var('answer_ref'))))
+						}
+					)
+				)
+			)
+		)
+
+		res.status(200).json({
+			message: 'Successfully deleted',
+			data: data
 		})
 	} catch(error) {
 		console.log(error)
@@ -118,7 +129,6 @@ app.post('/delete', async (req, res) => {
 			message: error.message
 		})
 	}
-	
 })
 
 
@@ -139,10 +149,10 @@ app.post('/populate', async (req, res) => {
 				})
 			)
 
-			question.options.forEach((answer) => {
-				client.query(
+			question.options.forEach(async (answer) => {
+				await client.query(
 					q.Create(q.Collection('Answer'), {
-						data: {answer: answer.text, correct: answer.correct, owner: {connect: createdQuestion.ref.id}}
+						data: {answer: answer.text, correct: answer.correct, owner: createdQuestion.ref}
 					})
 				)
 			})
