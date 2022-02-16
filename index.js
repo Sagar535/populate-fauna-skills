@@ -93,12 +93,12 @@ app.get('/skills', async (req, res) => {
 // need it to easily populate and delete questions when necessary
 // delete all questions of particular topic
 app.post('/delete', async (req, res) => {
-	const { skill } = req.body
+	const { topic } = req.body
 
-	if(skill === undefined) { return res.status(422).json({message: 'Please provide skill name.'}) }
+	if(topic === undefined) { return res.status(422).json({message: 'Please provide skill topic.'}) }
 
 	// question_refs
-	const { data } = await client.query(q.Paginate(q.Match(q.Index('question_by_topic'), skill)))
+	const { data } = await client.query(q.Paginate(q.Match(q.Index('question_by_topic'), topic)))
 	const question_refs = data
 
 	try {
