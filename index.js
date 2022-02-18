@@ -82,10 +82,21 @@ app.get('/skills', async (req, res) => {
 	const response = await fetch(resource_url + 'skills')
 	const skills = await response.json()
 
-	
+	// populated skills
+	const { data: populated_skills } = await client.query(
+		q.Paginate(
+			q.Distinct(
+				q.Match(q.Index('question_topics'))
+			)
+		)
+	)
 
 	res.status(201).json(skills.map(skill => {
-		return { skill_name: sanitized(skill.skill_name) }
+		const skill_name = sanitized(skill.skill_name)
+		return { 
+			skill_name: skill_name, 
+			populated: populated_skills.includes(skill_name) 
+		}
 	}))
 })
 
