@@ -45,6 +45,24 @@ app.get('/questions', async(req, res) => {
 	}
 })
 
+// get questions by topic
+app.get('/question_by_topic/:topic', async(req, res) => {
+	const { topic } = req.params
+
+	try {
+		const questions = await(client.query(
+			q.Map(
+				q.Paginate(q.Match(q.Index('question_by_topic'), topic)),
+				q.Lambda('question_ref', q.Get(q.Var('question_ref')))
+			)
+		))
+
+		res.status(200).json(questions)
+	} catch(errors) {
+		res.status(500).json({error: error.message})
+	}
+})
+
 // retrieve single question
 app.get('/questions/:id', async (req, res) => {
 	try {
