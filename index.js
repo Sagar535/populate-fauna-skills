@@ -95,8 +95,8 @@ app.post('/questions', async (req, res) => {
 	}
 })
 
-// get list of all skills
-app.get('/skills', async (req, res) => {
+// populate list of skills
+app.get('/populate_skills', async (req, res) => {
 	const response = await fetch(resource_url + 'skills')
 	const skills = await response.json()
 
@@ -109,13 +109,57 @@ app.get('/skills', async (req, res) => {
 		)
 	)
 
-	res.status(201).json(skills.map(skill => {
-		const skill_name = sanitized(skill.skill_name)
-		return { 
-			skill_name: skill_name, 
-			populated: populated_skills.includes(skill_name) 
-		}
-	}))
+	try {
+		skills.forEach(async (skill) => {
+			skill_name = sanitized(skill.skill_name)
+
+			// expect skill_status in format [skill_ref, skill_name, populated?]
+			const {data: skill_status} = await client.query(
+					q.Paginate(
+						q.Distinct(q.Match(q.Index("unique_skill_by_skill_name"), skill_name))
+					)
+				)
+
+
+			if (skill_status.length == 0) {
+				await client.query(
+					q.Create(q.Collection('Skill'), {
+						data: {
+							skill_name: skill_name,
+							populated: populated_skills.includes(skill_name)
+						}
+					})
+				)
+			} else {
+				const skill_ref = skill_status[0]
+				const populated = skill_status[2]
+				if( populated != populated_skills.includes(skill_name)) {
+					await client.query(
+						q.Update(skill_ref, {
+							data: { populated: populated_skills.includes(skill_name) }
+						})	
+					)
+				}
+			}
+		})
+
+		res.status(200).json({message: 'Skill status populated successfully...'})
+	} catch (error) {
+		res.status(500).json({error: error.message})
+	}
+})
+
+// get list of all skills
+app.get('/skills', async (req, res) => {
+	// populated skills
+	const { data: populated_skills } = await client.query(
+		q.Map(
+			q.Paginate(q.Documents(q.Collection('Skill'))),
+			q.Lambda('X', q.Get(q.Var('X')))
+		)
+	)
+
+	res.status(201).json(populated_skills.map(skill => skill.data))
 })
 
 // feature to delete questions one skill at a time

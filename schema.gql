@@ -22,3 +22,8 @@ type Answer {
 	correct: Boolean!
 	owner: Question!
 }
+
+type Skill{
+	skill_name: String! @unique
+	populated: Boolean!
+}
