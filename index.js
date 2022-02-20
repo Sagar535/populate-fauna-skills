@@ -174,7 +174,7 @@ app.post('/populate', async (req, res) => {
 		questions.forEach(async (question) => {
 			const createdQuestion = await client.query(
 				q.Create(q.Collection('Question'), {
-					data: {question: question.question, topic: topic, illustrator: illustrator}
+					data: {question: question.question, topic: topic, illustrator: question.illustrator}
 				})
 			)
 
