@@ -58,7 +58,7 @@ app.get('/question_by_topic/:topic', async(req, res) => {
 		))
 
 		res.status(200).json(questions)
-	} catch(errors) {
+	} catch(error) {
 		res.status(500).json({error: error.message})
 	}
 })
@@ -67,7 +67,7 @@ app.get('/question_by_topic/:topic', async(req, res) => {
 app.get('/questions/:id', async (req, res) => {
 	try {
 		const {data} = await client.query(
-			q.Get(q.Ref(q.Collection('questions'), req.params.id))
+			q.Get(q.Ref(q.Collection('Question'), req.params.id))
 
 		)
 
@@ -80,12 +80,12 @@ app.get('/questions/:id', async (req, res) => {
 // create question
 app.post('/questions', async (req, res) => {
 	try {
-		const {question, topic} = req.body
+		const {question, topic, illustrator} = req.body
 		console.log(req.body)
 		console.log(question)
 		const {data} = await client.query(
 			q.Create(q.Collection('Question'), {
-				data: {question, topic}
+				data: {question, topic, illustrator}
 			})
 		)
 
@@ -174,7 +174,7 @@ app.post('/populate', async (req, res) => {
 		questions.forEach(async (question) => {
 			const createdQuestion = await client.query(
 				q.Create(q.Collection('Question'), {
-					data: {question: question.question, topic: topic}
+					data: {question: question.question, topic: topic, illustrator: illustrator}
 				})
 			)
 
