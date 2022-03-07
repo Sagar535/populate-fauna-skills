@@ -237,6 +237,50 @@ app.post('/populate', async (req, res) => {
 	}
 })
 
+app.post('/populate_content', async (req, res) => {
+	const { topic, description } = req.body
+
+	try {
+		const {data} = await client.query(
+			q.Map(
+			  q.Paginate(q.Match(q.Index("content_by_topic"), topic)),
+			  q.Lambda("content_ref", q.Get(q.Var("content_ref")))
+			)
+		)
+
+		const content = data[0]
+
+		if (content !== undefined) {
+			await client.query(
+				q.Create(q.Collection('Content'), {
+					data: {topic: topic, description: description}
+				})
+			)
+		} else {
+			return res.status(201).json({error: 'Document not unique.'})
+		}
+
+		res.status(201).json({message: "Content populated successfully"})
+	} catch (error) {
+		res.status(500).json({error: error.description})
+	}
+})
+
+app.get('/contents', async (req, res) => {
+	try {
+		const contents = await client.query(
+			q.Map(
+				q.Paginate(q.Documents(q.Collection("Content"))),
+				q.Lambda("content_ref", q.Get(q.Var("content_ref")))
+			)
+		)
+
+		res.status(200).json(contents["data"].map(content => content["data"]))
+	} catch(error) {
+		res.status(500).json({error: error.description})
+	}
+})
+
 app.listen(PORT, () => console.log(`Listening at port ${PORT}`))
 
 
