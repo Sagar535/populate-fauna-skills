@@ -6,6 +6,7 @@ type User {
 type Test {
 	topic: String!
 	asks: [Question!] @relation
+	gets: [Answer!] @relation
 	owner: User!
 }
 
@@ -21,6 +22,7 @@ type Answer {
 	answer: String!
 	correct: Boolean!
 	owner: Question!
+	given_to: [Test!] @relation
 }
 
 type Skill{
