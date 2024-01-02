@@ -15,7 +15,7 @@
     "crons": [
         {
             "path": "/motivate/myself",
-            "schedule": "1 * * * *"
+            "schedule": "45 1 * * *"
         }
     ]
 }
