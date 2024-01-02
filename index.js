@@ -1,6 +1,28 @@
 const express = require('express')
+const request = require('request')
 const faunadb = require('faunadb'),
 	q = faunadb.query
+
+const nodemailer = require("nodemailer");
+
+const transporter = nodemailer.createTransport({
+  service: "Gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: "bikash535shah@gmail.com",
+    pass: process.env.GMAIL_PASSWORD,
+  },
+});
+
+const generateMailOption = (message) => ({
+  from: "bikash535shah@gmail.com",
+  to: "dit.sagar@gmail.com",
+  subject: "Daily dose of motivation",
+  text: message,
+})
+
 
 require('dotenv').config()
 
@@ -137,7 +159,7 @@ app.get('/populate_skills', async (req, res) => {
 					await client.query(
 						q.Update(skill_ref, {
 							data: { populated: populated_skills.includes(skill_name) }
-						})	
+						})
 					)
 				}
 			}
@@ -175,7 +197,7 @@ app.post('/delete', async (req, res) => {
 		const { data } = await client.query(
 			q.Map(
 				q.Paginate(q.Match(q.Index('question_by_topic'), topic), { size: 10000 }),
-				q.Lambda('question_ref', 
+				q.Lambda('question_ref',
 					q.Let(
 						{
 							answer_refs: q.Paginate(
@@ -281,6 +303,39 @@ app.get('/contents', async (req, res) => {
 	}
 })
 
+app.get("/motivate/myself", async(req, res) => {
+	try {
+		let message
+		request('https://zenquotes.io/api/random', function (error, response, body) {
+			if (!error && response.statusCode == 200) {
+				console.log(body) // prints the body
+				body = JSON.parse(body)[0] // body will be in string form, needs to be parsed
+				console.log(body)
+				message = `${body["q"]}  -- ${body["a"]}`
+				console.log(message)
+
+				const mailOptions = generateMailOption(message)
+
+				transporter.sendMail(mailOptions, (error, info) => {
+					if (error) {
+						console.error("Error sending email: ", error);
+						throw new Error(error)
+					} else {
+						console.log("Email sent: ", info.response);
+					}
+				});
+			} else {
+				console.log(error)
+				throw new Error(error)
+			}
+		})
+
+		res.status(200).json({ "message": message })
+	} catch(error) {
+		console.log("Error caught: ")
+		console.log(error)
+		res.status(500).json({error: error.description})
+	}
+})
+
 app.listen(PORT, () => console.log(`Listening at port ${PORT}`))
-
-
