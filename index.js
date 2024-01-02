@@ -5,6 +5,18 @@ const faunadb = require('faunadb'),
 
 const nodemailer = require("nodemailer");
 
+const generateMailOption = (message) => ({
+  from: "bikash535shah@gmail.com",
+  to: "dit.sagar@gmail.com",
+  subject: "Daily dose of motivation" + message,
+  text: message,
+})
+
+
+require('dotenv').config()
+
+const gmail_password = process.env.GMAIL_PASSWORD
+
 const transporter = nodemailer.createTransport({
   service: "Gmail",
   host: "smtp.gmail.com",
@@ -12,19 +24,9 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: "bikash535shah@gmail.com",
-    pass: process.env.GMAIL_PASSWORD,
+    pass: gmail_password,
   },
 });
-
-const generateMailOption = (message) => ({
-  from: "bikash535shah@gmail.com",
-  to: "dit.sagar@gmail.com",
-  subject: "Daily dose of motivation",
-  text: message,
-})
-
-
-require('dotenv').config()
 
 const client = new faunadb.Client({
 	secret: process.env.FAUNA_SECRET
