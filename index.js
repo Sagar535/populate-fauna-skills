@@ -8,7 +8,7 @@ const nodemailer = require("nodemailer");
 const generateMailOption = (message) => ({
   from: "bikash535shah@gmail.com",
   to: "dit.sagar@gmail.com",
-  subject: "Daily dose of motivation" + message,
+  subject: "Daily dose of motivation: " + message,
   text: message,
 })
 
@@ -324,6 +324,7 @@ app.get("/motivate/myself", async(req, res) => {
 						throw new Error(error)
 					} else {
 						console.log("Email sent: ", info.response);
+						res.status(200).json({ "message": message, "email_info": info.response })
 					}
 				});
 			} else {
@@ -331,8 +332,6 @@ app.get("/motivate/myself", async(req, res) => {
 				throw new Error(error)
 			}
 		})
-
-		res.status(200).json({ "message": message })
 	} catch(error) {
 		console.log("Error caught: ")
 		console.log(error)
