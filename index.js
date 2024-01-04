@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const express = require('express')
 const request = require('request')
 const faunadb = require('faunadb'),
@@ -5,15 +7,19 @@ const faunadb = require('faunadb'),
 
 const nodemailer = require("nodemailer");
 
-const generateMailOption = (message) => ({
-  from: "bikash535shah@gmail.com",
-  to: "dit.sagar@gmail.com",
-  subject: "Daily dose of motivation: " + message,
-  text: message,
-})
 
+const receivers = () => process.env.RECEIVERS.split(/\s+/)
 
-require('dotenv').config()
+console.log(receivers())
+
+const generateMailOption = (message) => receivers().map(receiver => (
+	{
+		from: "bikash535shah@gmail.com",
+		to: receiver,
+		subject: "Daily dose of motivation: " + message,
+		text: message,
+	}
+))
 
 const gmail_password = process.env.GMAIL_PASSWORD
 
@@ -310,23 +316,21 @@ app.get("/motivate/myself", async(req, res) => {
 		let message
 		request('https://zenquotes.io/api/random', function (error, response, body) {
 			if (!error && response.statusCode == 200) {
-				console.log(body) // prints the body
 				body = JSON.parse(body)[0] // body will be in string form, needs to be parsed
-				console.log(body)
 				message = `${body["q"]}  -- ${body["a"]}`
-				console.log(message)
 
 				const mailOptions = generateMailOption(message)
 
-				transporter.sendMail(mailOptions, (error, info) => {
-					if (error) {
-						console.error("Error sending email: ", error);
-						throw new Error(error)
-					} else {
-						console.log("Email sent: ", info.response);
-						res.status(200).json({ "message": message, "email_info": info.response })
-					}
-				});
+				mailOptions.forEach(mailOption => {
+					transporter.sendMail(mailOption, (error, info) => {
+						if (error) {
+							console.error("Error sending email: ", error);
+							throw new Error(error)
+						} else {
+							res.status(200).json({ "message": message, "email_info": info.response })
+						}
+					});
+				})
 			} else {
 				console.log(error)
 				throw new Error(error)
